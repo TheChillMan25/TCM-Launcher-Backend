@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "TCM_Launcher_Backend": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7050",
+      "launchBrowser": false
+    }
+  }
+}
