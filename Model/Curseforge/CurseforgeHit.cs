@@ -18,6 +18,17 @@ namespace TCM_Launcher_Backend.Model.Curseforge
         public List<CurseforgeCategory> Categories { get; set; }
         [JsonPropertyName("logo")]
         public CurseforgeModAsset Logo { get; set; }
+        [JsonPropertyName("latestFilesIndexes")]
+        public List<CurseforgeFileIndex> LatestFilesIndexes { get; set; }
+    }
+
+    public class CurseforgeFileIndex
+    {
+        [JsonPropertyName("gameVersion")]
+        public string GameVersion { get; set; }
+
+        [JsonPropertyName("modLoader")]
+        public int? ModLoader { get; set; }
     }
 
     public class CurseforgeAuthor

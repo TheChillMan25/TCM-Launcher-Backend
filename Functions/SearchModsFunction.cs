@@ -2,20 +2,22 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
-using TCM_Launcher_Backend.Services;
+using TCM_Launcher_Backend.Interfaces;
 
 namespace TCM_Launcher_Backend.Functions
 {
-    public class SearchMod
+    public class SearchModsFunction
     {
-        private readonly ILogger<SearchMod> _logger;
+        private readonly ILogger<SearchModsFunction> _logger;
+        private readonly IModSearchService modSearchService;
 
-        public SearchMod(ILogger<SearchMod> logger)
+        public SearchModsFunction(ILogger<SearchModsFunction> logger, IModSearchService modSearchService)
         {
             _logger = logger;
+            this.modSearchService = modSearchService;
         }
 
-        [Function("SearchMod")]
+        [Function("SearchMods")]
         public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req)
         {
             _logger.LogInformation("C# HTTP trigger function processed a request.");
@@ -28,9 +30,9 @@ namespace TCM_Launcher_Backend.Functions
                 return new BadRequestObjectResult("Query is required");
             }
 
-            var result = await ModSearchService.Instance.SearchModsAsync(query, version);
+            var result = await modSearchService.SearchModsAsync(query, version);
 
-            return new OkObjectResult(result.OrderByDescending(r => r.DownloadCount));
+            return new OkObjectResult(result);
         }
     }
 }
