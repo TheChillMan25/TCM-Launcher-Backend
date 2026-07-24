@@ -6,7 +6,7 @@
         public string Title { get; set; }
         public string Summary { get; set; }
         public string Author { get; set; }
-        public string IconUrl { get; set; }
+        public string? IconUrl { get; set; }
         public uint DownloadCount { get; set; }
         public ModSource Source { get; set; }
         public string Client_Side { get; set; }

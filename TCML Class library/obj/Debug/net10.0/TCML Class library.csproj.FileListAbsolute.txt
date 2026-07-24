@@ -1,0 +1,12 @@
+C:\Users\Péter\source\repos\TCM Launcher Backend\TCML Class library\bin\Debug\net10.0\TCML Class library.deps.json
+C:\Users\Péter\source\repos\TCM Launcher Backend\TCML Class library\bin\Debug\net10.0\TCML Class library.dll
+C:\Users\Péter\source\repos\TCM Launcher Backend\TCML Class library\bin\Debug\net10.0\TCML Class library.pdb
+C:\Users\Péter\source\repos\TCM Launcher Backend\TCML Class library\obj\Debug\net10.0\TCML Class library.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Péter\source\repos\TCM Launcher Backend\TCML Class library\obj\Debug\net10.0\TCML Class library.AssemblyInfoInputs.cache
+C:\Users\Péter\source\repos\TCM Launcher Backend\TCML Class library\obj\Debug\net10.0\TCML Class library.AssemblyInfo.cs
+C:\Users\Péter\source\repos\TCM Launcher Backend\TCML Class library\obj\Debug\net10.0\TCML Class library.csproj.CoreCompileInputs.cache
+C:\Users\Péter\source\repos\TCM Launcher Backend\TCML Class library\obj\Debug\net10.0\TCML Class library.sourcelink.json
+C:\Users\Péter\source\repos\TCM Launcher Backend\TCML Class library\obj\Debug\net10.0\TCML Class library.dll
+C:\Users\Péter\source\repos\TCM Launcher Backend\TCML Class library\obj\Debug\net10.0\refint\TCML Class library.dll
+C:\Users\Péter\source\repos\TCM Launcher Backend\TCML Class library\obj\Debug\net10.0\TCML Class library.pdb
+C:\Users\Péter\source\repos\TCM Launcher Backend\TCML Class library\obj\Debug\net10.0\ref\TCML Class library.dll
