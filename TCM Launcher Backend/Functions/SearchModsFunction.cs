@@ -20,10 +20,11 @@ namespace TCM_Launcher_Backend.Functions
         [Function("SearchMods")]
         public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req)
         {
-            _logger.LogInformation("C# HTTP trigger function processed a request.");
 
             string? query = req.Query["query"];
             string? version = req.Query["version"];
+
+            _logger.LogInformation($"Started search with query={query}, mcVersion={version}");
 
             if (string.IsNullOrEmpty(query))
             {

@@ -20,12 +20,13 @@ public class ModDetailsFunction
     [Function("GetModDetails")]
     public async Task<IActionResult> RunAsync([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req)
     {
-        _logger.LogInformation("C# HTTP trigger function processed a request.");
 
         string? query = req.Query["query"];
         string? mcVersion = req.Query["mcVersion"];
         string? sourceText = req.Query["source"];
         string? needDescTxt = req.Query["needDesc"];
+
+        _logger.LogInformation($"Getting details with query={query}, mcVersion={mcVersion}");
 
         bool.TryParse(needDescTxt, out var needDesc);
         Enum.TryParse<ModSource>(sourceText, true, out var modSource);

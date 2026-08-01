@@ -84,7 +84,7 @@ namespace TCM_Launcher_Backend.Services
             var result = new List<ModSearchResult>();
             string encodedQuery = Uri.EscapeDataString(query);
             string encodedVersion = Uri.EscapeDataString(version);
-            string url = $"https://api.curseforge.com/v1/mods/search/?gameId=432&classId=6&searchFilter={encodedQuery}&gameVersion={encodedVersion}";
+            string url = $"https://api.curseforge.com/v1/mods/search?gameId=432&classId=6&searchFilter={encodedQuery}&gameVersion={encodedVersion}&modLoaderType=1";
 
             try
             {
@@ -101,14 +101,14 @@ namespace TCM_Launcher_Backend.Services
                 {
                     using var stream = await response.Content.ReadAsStreamAsync();
                     var searchResult = JsonSerializer.Deserialize<CurseforgeSearchResult>(stream);
-                    var forgeOnly = searchResult.Data.Where(hit =>
-                    hit.LatestFilesIndexes == null ||
-                    hit.LatestFilesIndexes.Any(i => i.ModLoader == 1 &&
-                    (string.IsNullOrEmpty(version) || i.GameVersion == version))).ToList();
+                    //var forgeOnly = searchResult.Data.Where(hit =>
+                    //hit.LatestFilesIndexes == null ||
+                    //hit.LatestFilesIndexes.Any(i => i.ModLoader == 1 &&
+                    //(string.IsNullOrEmpty(version) || i.GameVersion == version))).ToList();
 
                     if (searchResult.Data != null && searchResult.Data.Count > 0)
                     {
-                        foreach (var hit in forgeOnly)
+                        foreach (var hit in searchResult.Data)
                         {
                             var enviroments = CurseforgeHelper.ConvertForgeCategoriesToEnviroments(hit.Categories);
                             var modSearchResult = new ModSearchResult
