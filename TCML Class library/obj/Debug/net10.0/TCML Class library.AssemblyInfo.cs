@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TCML Class library")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+345ba5f234b053577ae64f70a3c870055a0b1e71")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dc0371e363012ffeb1fba7c2ac68fd45da9704bc")]
 [assembly: System.Reflection.AssemblyProductAttribute("TCML Class library")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TCML Class library")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -25,6 +25,8 @@ public class ModDetailsFunction
         string? mcVersion = req.Query["mcVersion"];
         string? sourceText = req.Query["source"];
         string? needDescTxt = req.Query["needDesc"];
+        string? modrinthId = req.Query["modrinthId"];
+        string? curseforgeId = req.Query["curseforgeId"];
 
         _logger.LogInformation($"Getting details with query={query}, mcVersion={mcVersion}");
 
@@ -40,10 +42,10 @@ public class ModDetailsFunction
         switch (modSource)
         {
             case ModSource.Modrinth:
-                result = await modDetailsService.GetModrinthModDetails(query, mcVersion);
+                result = await modDetailsService.GetModrinthModDetails(query, modrinthId, curseforgeId, mcVersion);
                 break;
             case ModSource.CurseForge:
-                result = await modDetailsService.GetCurseforgeModDetails(query, mcVersion, needDesc);
+                result = await modDetailsService.GetCurseforgeModDetails(query, modrinthId, curseforgeId, mcVersion, needDesc);
                 break;
         }
         return new OkObjectResult(result);

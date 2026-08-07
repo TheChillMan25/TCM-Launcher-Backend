@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using TCM_Launcher_Backend.Model.Curseforge;
 using TCM_Launcher_Backend.Model.Modrinth;
 using TCML_Class_library;
@@ -20,7 +21,7 @@ namespace TCM_Launcher_Backend.Services
             this.cache = cache;
         }
 
-        public async Task<ModDetails?> GetCurseforgeModDetails(string procjectId, string version, bool needDesc = true)
+        public async Task<ModDetails?> GetCurseforgeModDetails(string procjectId, string? modrinthId, string? curseforgeId, string version, bool needDesc = true)
         {
             string cacheKey = $"details_{procjectId.ToLower().Trim()}_{version}";
 
@@ -42,7 +43,8 @@ namespace TCM_Launcher_Backend.Services
                 var response = await client.SendAsync(request);
                 if (response.IsSuccessStatusCode)
                 {
-                    var versionsTask = GetCurseforgeModVersions(procjectId, version);
+                    string actualCurseforgeId = !string.IsNullOrEmpty(curseforgeId) ? curseforgeId : procjectId;
+                    var versionsTask = GetCombinedModVersions(modrinthId, actualCurseforgeId, version);
                     var descriptionTask = needDesc ? GetCurseforgeModDescription(procjectId) : Task.FromResult(string.Empty);
                     using var stream = await response.Content.ReadAsStreamAsync();
                     var wrapper = await JsonSerializer.DeserializeAsync<CurseforgeResponse<CurseforgeHit>>(stream);
@@ -109,6 +111,7 @@ namespace TCM_Launcher_Backend.Services
                         Name = f.DisplayName,
                         ProjectId = f.ModId.ToString(),
                         VersionNumber = f.FileName,
+                        Source = ModSource.CurseForge,
                         VersionType = f.ReleaseType == 1 ? "release" : f.ReleaseType == 2 ? "beta" : "alpha",
                         Downloads = f.DownloadCount,
                         Files = new List<ModFile>
@@ -180,7 +183,7 @@ namespace TCM_Launcher_Backend.Services
             }
         }
 
-        public async Task<ModDetails?> GetModrinthModDetails(string procjectId, string version)
+        public async Task<ModDetails?> GetModrinthModDetails(string procjectId, string? modrinthId, string? curseforgeId, string version)
         {
             string cacheKey = $"details_{procjectId.ToLower().Trim()}_{version}";
 
@@ -189,7 +192,8 @@ namespace TCM_Launcher_Backend.Services
                 return cachedResult;
             }
 
-            var versionsTask = GetModrinthModVersions(procjectId, version);
+            string actualModrinthId = !string.IsNullOrEmpty(modrinthId) ? modrinthId : procjectId;
+            var versionsTask = GetCombinedModVersions(modrinthId ?? procjectId, curseforgeId, version);
             var authorTask = GetModrinthAuthorAsync(procjectId);
             string url = $"https://api.modrinth.com/v2/project/{Uri.EscapeDataString(procjectId)}";
             try
@@ -270,6 +274,7 @@ namespace TCM_Launcher_Backend.Services
                         ProjectId = v.ProjectId,
                         VersionNumber = v.VersionNumber,
                         VersionType = v.VersionType,
+                        Source = ModSource.Modrinth,
                         Downloads = v.Downloads,
                         Files = v.Files.Select(f => new ModFile
                         {
@@ -320,6 +325,117 @@ namespace TCM_Launcher_Backend.Services
             {
             }
             return "Unknown";
+        }
+        public async Task<List<ModVersion>?> GetCombinedModVersions(string? modrinthId, string? curseforgeId, string mcVersion)
+        {
+            Task<List<ModVersion>> modrinthTask = !string.IsNullOrEmpty(modrinthId)
+                ? GetModrinthModVersions(modrinthId, mcVersion)
+                : Task.FromResult(new List<ModVersion>());
+
+            Task<List<ModVersion>> curseforgeTask = !string.IsNullOrEmpty(curseforgeId)
+                ? GetCurseforgeModVersions(curseforgeId, mcVersion)
+                : Task.FromResult(new List<ModVersion>());
+
+            await Task.WhenAll(modrinthTask, curseforgeTask);
+
+            List<ModVersion> combinedVersions = MergeVersions(modrinthTask.Result, curseforgeTask.Result);
+
+            return combinedVersions;
+        }
+        private List<ModVersion> MergeVersions(List<ModVersion> modrinthVersions, List<ModVersion> curseforgeVersions)
+        {
+            var mergedList = new List<ModVersion>(modrinthVersions ?? new List<ModVersion>());
+
+            if (curseforgeVersions == null || !curseforgeVersions.Any())
+                return mergedList;
+
+            foreach (var cfVersion in curseforgeVersions)
+            {
+                var cfFile = cfVersion.Files.FirstOrDefault();
+                string cfFileName = cfFile?.FileName ?? "";
+                long cfFileSize = cfFile?.Size ?? 0;
+                string cfNormVersion = NormalizeVersionString(cfVersion.VersionNumber, cfFileName);
+
+                bool isDuplicate = mergedList.Any(mrVersion =>
+                {
+                    var mrFile = mrVersion.Files.FirstOrDefault();
+                    string mrFileName = mrFile?.FileName ?? "";
+                    long mrFileSize = mrFile?.Size ?? 0;
+                    string mrNormVersion = NormalizeVersionString(mrVersion.VersionNumber, mrFileName);
+
+                    if (!string.IsNullOrEmpty(cfFileName) &&
+                        string.Equals(cfFileName, mrFileName, StringComparison.OrdinalIgnoreCase)) return true;
+
+                    if (cfFileSize > 0 && cfFileSize == mrFileSize && cfNormVersion == mrNormVersion) return true;
+
+                    if (!string.IsNullOrWhiteSpace(cfNormVersion) && cfNormVersion == mrNormVersion) return true;
+
+                    return false;
+                });
+
+                if (!isDuplicate)
+                {
+                    mergedList.Add(cfVersion);
+                }
+            }
+
+            return mergedList
+                .OrderByDescending(v => ParseVersionNumber(v.VersionNumber, v.Name))
+                .ToList();
+        }
+
+
+        private string NormalizeVersionString(string versionNumber, string fallbackName)
+        {
+            string target = !string.IsNullOrWhiteSpace(versionNumber) ? versionNumber : fallbackName;
+            if (string.IsNullOrWhiteSpace(target)) return string.Empty;
+
+            string normalized = target.ToLowerInvariant();
+
+            normalized = normalized.Replace(".jar", "")
+                                   .Replace("(forge)", "")
+                                   .Replace("(fabric)", "")
+                                   .Replace("[forge]", "")
+                                   .Replace("[fabric]", "")
+                                   .Replace("-forge", "")
+                                   .Replace("-fabric", "")
+                                   .Trim();
+
+            if (normalized.StartsWith("v") && normalized.Length > 1 && char.IsDigit(normalized[1]))
+            {
+                normalized = normalized.Substring(1);
+            }
+
+            var cleanChars = normalized.Where(c => char.IsDigit(c) || c == '.' || c == '-').ToArray();
+            return new string(cleanChars).Trim('-');
+        }
+
+        public static List<ModVersion> SortBySemanticVersion(List<ModVersion> versions)
+        {
+            return versions
+                .OrderByDescending(v => ParseVersionNumber(v.VersionNumber, v.Name))
+                .ToList();
+        }
+
+        private static Version ParseVersionNumber(string? versionNumber, string? fallbackName)
+        {
+            string raw = !string.IsNullOrWhiteSpace(versionNumber) ? versionNumber : (fallbackName ?? "");
+            if (string.IsNullOrWhiteSpace(raw)) return new Version(0, 0);
+
+            var match = Regex.Match(raw, @"\d+(\.\d+)+");
+            if (match.Success)
+            {
+                var parts = match.Value.Split('.');
+
+                int major = parts.Length > 0 && int.TryParse(parts[0], out int p0) ? p0 : 0;
+                int minor = parts.Length > 1 && int.TryParse(parts[1], out int p1) ? p1 : 0;
+                int build = parts.Length > 2 && int.TryParse(parts[2], out int p2) ? p2 : 0;
+                int revision = parts.Length > 3 && int.TryParse(parts[3], out int p3) ? p3 : 0;
+
+                return new Version(major, minor, build, revision);
+            }
+
+            return new Version(0, 0);
         }
     }
 }

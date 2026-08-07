@@ -13,6 +13,7 @@
         public string ProjectId { get; set; }
         public string VersionNumber { get; set; }
         public string VersionType { get; set; }
+        public ModSource Source { get; set; }
         public uint Downloads { get; set; }
         public List<ModFile> Files { get; set; }
         public List<ModDependency> Dependencies { get; set; }

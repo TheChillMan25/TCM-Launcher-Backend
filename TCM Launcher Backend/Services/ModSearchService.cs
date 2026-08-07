@@ -81,11 +81,24 @@ namespace TCM_Launcher_Backend.Services
 
         public async Task<List<ModSearchResult>> SearchCurseforgeAsync(string query, string version)
         {
-            var result = new List<ModSearchResult>();
             string encodedQuery = Uri.EscapeDataString(query);
             string encodedVersion = Uri.EscapeDataString(version);
-            string url = $"https://api.curseforge.com/v1/mods/search?gameId=432&classId=6&searchFilter={encodedQuery}&gameVersion={encodedVersion}&modLoaderType=1";
+            string url = $"https://api.curseforge.com/v1/mods/search?gameId=432&classId=6&searchFilter={encodedQuery}&gameVersion={encodedVersion}&modLoaderType=1&searchFilter=2&pageSize=50&sortField=2&sortOrder=desc";
 
+            var result = await FetchCurseforgeModsAsync(url);
+            
+            if(result.Count == 0)
+            {
+                string fallbackUrl = $"https://api.curseforge.com/v1/mods/search?gameId=432&classId=6&searchFilter={encodedQuery}&gameVersion={encodedVersion}&pageSize=50&sortField=2&sortOrder=desc";
+                result = await FetchCurseforgeModsAsync(fallbackUrl);
+            }
+
+            return result;
+        }
+
+        private async Task<List<ModSearchResult>> FetchCurseforgeModsAsync(string url)
+        {
+            var result = new List<ModSearchResult>();
             try
             {
                 var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -101,28 +114,27 @@ namespace TCM_Launcher_Backend.Services
                 {
                     using var stream = await response.Content.ReadAsStreamAsync();
                     var searchResult = JsonSerializer.Deserialize<CurseforgeSearchResult>(stream);
-                    //var forgeOnly = searchResult.Data.Where(hit =>
-                    //hit.LatestFilesIndexes == null ||
-                    //hit.LatestFilesIndexes.Any(i => i.ModLoader == 1 &&
-                    //(string.IsNullOrEmpty(version) || i.GameVersion == version))).ToList();
 
                     if (searchResult.Data != null && searchResult.Data.Count > 0)
                     {
                         foreach (var hit in searchResult.Data)
                         {
-                            var enviroments = CurseforgeHelper.ConvertForgeCategoriesToEnviroments(hit.Categories);
+                            var categories = hit.Categories ?? new List<CurseforgeCategory>();
+                            var enviroments = CurseforgeHelper.ConvertForgeCategoriesToEnviroments(categories);
                             var modSearchResult = new ModSearchResult
                             {
                                 Id = hit.Id.ToString(),
                                 Title = hit.Name,
                                 Source = ModSource.CurseForge,
                                 Summary = hit.Summary,
-                                IconUrl = hit.Logo.Url,
-                                Author = hit.Authors[0].Name ?? "NULL",
+                                IconUrl = hit.Logo?.Url ?? "",
+                                Author = (hit.Authors != null && hit.Authors.Count > 0)
+                                    ? (hit.Authors[0].Name ?? "Unknown")
+                                    : "Unknown",
                                 DownloadCount = hit.DownloadCount,
                                 Client_Side = enviroments["ClientSide"],
                                 Server_Side = enviroments["ServerSide"],
-                                Categories = hit.Categories.Select(c => c.Name).ToList(),
+                                Categories = categories.Select(c => c.Name).ToList(),
                             };
                             result.Add(modSearchResult);
                         }
@@ -137,7 +149,6 @@ namespace TCM_Launcher_Backend.Services
             {
                 Console.WriteLine(ex);
             }
-
             return result;
         }
 
@@ -174,9 +185,11 @@ namespace TCM_Launcher_Backend.Services
             {
                 string key = NormalizeModName(mod.Title);
 
-                if(string.IsNullOrEmpty(key)) continue;
+                if(string.IsNullOrEmpty(key)) continue; 
+                if (mod.Source == ModSource.Modrinth) mod.ModrinthId = mod.Id;
+                if (mod.Source == ModSource.CurseForge) mod.CurseforgeId = mod.Id;
 
-                if(mergedDirectory.TryGetValue(key, out var existingMod))
+                if (mergedDirectory.TryGetValue(key, out var existingMod))
                 {
                     existingMod.DownloadCount += mod.DownloadCount;
                     if(existingMod.Summary.Length < mod.Summary.Length)
@@ -189,8 +202,13 @@ namespace TCM_Launcher_Backend.Services
                     }
                     if (mod.Source == ModSource.Modrinth)
                     {
+                        existingMod.ModrinthId = mod.Id;
                         existingMod.Client_Side = mod.Client_Side;
                         existingMod.Server_Side = mod.Server_Side;
+                    }
+                    else if (mod.Source == ModSource.CurseForge)
+                    {
+                        existingMod.CurseforgeId = mod.Id;
                     }
                 }
                 else
@@ -229,7 +247,8 @@ namespace TCM_Launcher_Backend.Services
                 {
                     score += 200;
                 }
-                score += Math.Log10(mod.DownloadCount - 1) * 100;
+                long downloads = Math.Max(1, mod.DownloadCount);
+                score += Math.Log10(downloads) * 100;
                 return score;
             }).ToList();
         }
